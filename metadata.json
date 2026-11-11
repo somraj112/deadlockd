@@ -1,0 +1,6 @@
+{
+  "name": "Deadlockd",
+  "description": "Turn any deadline into a high-clarity transit-map lock-screen wallpaper that answers what you are working toward, how much time you have, and what to do next.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
