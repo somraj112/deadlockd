@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { DeadlockdPlan } from '../utils/planLogic';
 import {
   renderOsPreviewOverlay,
@@ -8,6 +8,7 @@ import {
 import { Check, Clock, Maximize2 } from 'lucide-react';
 
 interface WallpaperStageProps {
+  artworkCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   plan: DeadlockdPlan;
   todayStr: string;
   width: number;
@@ -20,6 +21,7 @@ interface WallpaperStageProps {
 }
 
 export const WallpaperStage: React.FC<WallpaperStageProps> = ({
+  artworkCanvasRef,
   plan,
   todayStr,
   width,
@@ -30,10 +32,9 @@ export const WallpaperStage: React.FC<WallpaperStageProps> = ({
   nextSummaryText,
   onMetricsComputed,
 }) => {
-  const artworkCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
 
     const draw = () => {
@@ -73,7 +74,7 @@ export const WallpaperStage: React.FC<WallpaperStageProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [plan, todayStr, width, height, showClockGuides, onMetricsComputed]);
+  }, [artworkCanvasRef, plan, todayStr, width, height, showClockGuides, onMetricsComputed]);
 
   const isLandscape = width / height >= 1.15;
 

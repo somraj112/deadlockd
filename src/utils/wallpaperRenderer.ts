@@ -1093,37 +1093,35 @@ export function renderOsPreviewOverlay(
 }
 
 /**
- * Renders the wallpaper onto an offscreen canvas at exact output pixel dimensions,
- * waits for document fonts to be ready, and triggers a browser PNG download.
+ * Downloads the artwork layer at native resolution. If fonts are still loading,
+ * render the requested plan separately after they settle so later edits cannot change it.
  */
 export async function exportWallpaperPng(
   plan: DeadlockdPlan,
   todayStr: string,
   width: number,
   height: number,
-  filename: string
-): Promise<{ width: number; height: number; filename: string; dataUrl: string }> {
-  if (typeof document !== 'undefined' && 'fonts' in document) {
-    try {
-      await document.fonts.ready;
-    } catch {
-      // Proceed even if font readiness promise rejects
-    }
+  filename: string,
+  artworkCanvas?: HTMLCanvasElement | null
+): Promise<{ width: number; height: number; filename: string }> {
+  const canUsePreview = artworkCanvas?.width === width &&
+    artworkCanvas.height === height && document.fonts?.status !== 'loading';
+  const canvas = canUsePreview ? artworkCanvas : document.createElement('canvas');
+  if (!canUsePreview) {
+    await document.fonts?.ready;
+    renderWallpaperToCanvas(canvas, plan, todayStr, width, height);
   }
 
-  const offscreen = document.createElement('canvas');
-  offscreen.width = width;
-  offscreen.height = height;
-
-  renderWallpaperToCanvas(offscreen, plan, todayStr, width, height);
-
-  const dataUrl = offscreen.toDataURL('image/png');
-
   const blob = await new Promise<Blob | null>((resolve) =>
-    offscreen.toBlob((b) => resolve(b), 'image/png')
+    canvas.toBlob(resolve, 'image/png')
   );
-
-  const downloadUrl = blob ? URL.createObjectURL(blob) : dataUrl;
+  // Release the full-resolution bitmap as soon as PNG encoding finishes.
+  if (!canUsePreview) {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+  if (!blob) throw new Error('PNG encoding failed');
+  const downloadUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = downloadUrl;
   link.download = filename;
@@ -1131,9 +1129,7 @@ export async function exportWallpaperPng(
   link.click();
   document.body.removeChild(link);
 
-  if (blob) {
-    setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
-  }
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
 
-  return { width, height, filename, dataUrl };
+  return { width, height, filename };
 }

@@ -85,6 +85,7 @@ export default function App() {
     null
   );
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportError, setExportError] = useState('');
 
   // Clock guides default to off so the exported artwork is unencumbered on first view
   const [showClockGuides, setShowClockGuides] = useState<boolean>(false);
@@ -93,6 +94,8 @@ export default function App() {
 
   const fullSizeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fullSizeOverlayRef = useRef<HTMLCanvasElement | null>(null);
+  const artworkCanvasRef = useRef<HTMLCanvasElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
 
   // Save plan on every state change
   useEffect(() => {
@@ -146,6 +149,8 @@ export default function App() {
 
   const handleDownloadWallpaper = useCallback(async (): Promise<string> => {
     setIsExporting(true);
+    setExportError('');
+    setExportReceipt(null);
     try {
       const filename = buildExportFilename(
         plan.goal,
@@ -158,7 +163,8 @@ export default function App() {
         todayStr,
         width,
         height,
-        filename
+        filename,
+        artworkCanvasRef.current
       );
       const instructions = getPlatformInstructions(plan.preset, plan.osPreview);
       setExportReceipt({
@@ -168,6 +174,10 @@ export default function App() {
         platformInstructions: instructions,
       });
       return `Exported ${result.filename} (${result.width} × ${result.height} px).`;
+    } catch {
+      const message = 'Couldn’t download the wallpaper. Try again or choose a smaller output size.';
+      setExportError(message);
+      return message;
     } finally {
       setIsExporting(false);
     }
@@ -495,52 +505,14 @@ export default function App() {
 
       {/* Main Studio Workspace: Preview takes most of the screen; Controls sit beside on wide screens / below on mobile */}
       <main className="flex-1 flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto overflow-x-hidden">
-        {/* Left / Primary Stage: Live Wallpaper Preview */}
-        <section
-          aria-label="Wallpaper preview stage"
-          className="flex-1 flex flex-col items-center justify-start lg:justify-center p-3 sm:p-5 lg:p-6 bg-[#06090E] lg:min-h-[calc(100vh-57px)]"
-        >
-          {/* Mobile live status strip above preview */}
-          <div className="w-full max-w-[460px] flex md:hidden items-center justify-between text-xs text-[#8A8479] mb-2.5 px-1">
-            <span className="font-mono tabular-nums text-[#FF5A1F] font-semibold">
-              {countdown.liveHeadline}
-            </span>
-            <span className="font-mono tabular-nums">
-              {width} × {height} px
-            </span>
-          </div>
-
-          <WallpaperStage
-            plan={plan}
-            todayStr={todayStr}
-            width={width}
-            height={height}
-            showClockGuides={showClockGuides}
-            onToggleClockGuides={handleToggleClockGuides}
-            onOpenFullSize={() => setIsFullSizeOpen(true)}
-            nextSummaryText={nextSummaryText}
-          />
-
-          {/* Compact caption on smaller screens where the side metadata column is hidden */}
-          <div className="mt-2.5 flex xl:hidden flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-[#8A8479] text-center">
-            <span className="font-mono tabular-nums">
-              {width} × {height} PNG
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>{nextSummaryText}</span>
-          </div>
-        </section>
-
-        {/* Right / Secondary Column: Studio Controls & Editor */}
-        <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 border-t lg:border-t-0 lg:border-l border-[#F4F0EA]/10 bg-[#080B10] p-4 sm:p-6 overflow-y-auto space-y-5">
-          {/* Primary Two Actions: "Download wallpaper" & "Make it mine" */}
-          <section aria-label="Primary actions" className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid min-w-0 flex-1 content-start lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_450px] lg:grid-rows-[auto_1fr]">
+          <section aria-label="Primary actions" className="space-y-3 px-3 py-3 sm:px-6 lg:col-start-2 lg:row-start-1 lg:border-l lg:border-[#F4F0EA]/10 lg:pt-6 lg:pb-5">
+            <div className="grid grid-cols-[auto_1fr] sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
                 disabled={isExporting}
                 onClick={handleDownloadWallpaper}
-                className="min-h-[46px] px-4 py-2.5 rounded-xl bg-[#FF5A1F] hover:bg-[#FF5A1F]/90 text-[#080B10] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="min-h-[46px] px-2.5 sm:px-4 py-2.5 rounded-xl bg-[#FF5A1F] hover:bg-[#FF5A1F]/90 text-[#080B10] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Download className="w-4 h-4 stroke-[2.25]" />
                 {isExporting ? 'Exporting…' : 'Download wallpaper'}
@@ -548,9 +520,10 @@ export default function App() {
 
               <button
                 type="button"
+                ref={editButtonRef}
                 onClick={() => setIsEditorOpen((v) => !v)}
                 aria-expanded={isEditorOpen}
-                className={`min-h-[46px] px-4 py-2.5 rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap shrink-0 border cursor-pointer ${
+                className={`min-h-[46px] px-2.5 sm:px-4 py-2.5 rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap shrink-0 border cursor-pointer ${
                   isEditorOpen
                     ? 'bg-[#F4F0EA] text-[#080B10] border-[#F4F0EA]'
                     : 'bg-[#0E131D] text-[#F4F0EA] border-[#F4F0EA]/20 hover:border-[#F4F0EA]/45'
@@ -562,6 +535,7 @@ export default function App() {
             </div>
 
             {/* Post-Export Save/Apply Instructions & Snapshot Notice */}
+            {exportError && !isFullSizeOpen && <p role="alert" className="text-sm text-[#F4F0EA]">{exportError}</p>}
             {exportReceipt && (
               <div
                 role="status"
@@ -597,42 +571,86 @@ export default function App() {
             )}
           </section>
 
-          {/* Plan & Station Editor */}
-          <PlanEditorPanel
-            plan={plan}
-            routeState={routeState}
-            todayStr={todayStr}
-            isEditorOpen={isEditorOpen}
-            onOpenEditor={() => setIsEditorOpen(true)}
-            onCloseEditor={() => setIsEditorOpen(false)}
-            onUpdateGoalAndDeadline={handleUpdateGoalAndDeadline}
-            onToggleMilestoneDone={handleToggleMilestoneDone}
-            onUpdateMilestone={handleUpdateMilestone}
-            onDeleteMilestone={handleDeleteMilestone}
-            onAddMilestone={handleAddMilestone}
-            onRequestGeminiSuggestions={async (g, d) => {
-              await handleRequestGeminiSuggestions(g, d);
-            }}
-            isSuggesting={isSuggesting}
-            geminiError={geminiError}
-            onDismissGeminiError={() => setGeminiError(null)}
-            pendingDraft={pendingDraft}
-            onUpdateDraftItem={handleUpdateDraftItem}
-            onRemoveDraftItem={handleRemoveDraftItem}
-            onAcceptDraft={handleAcceptDraft}
-            onDiscardDraft={handleDiscardDraft}
-            onResetToExample={handleResetToExample}
-          />
+          {/* Left / Primary Stage: Live Wallpaper Preview */}
+          <section
+            aria-label="Wallpaper preview stage"
+            className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2 flex flex-col items-center justify-start lg:justify-center p-3 sm:p-5 lg:p-6 bg-[#06090E] lg:min-h-[calc(100vh-57px)]"
+          >
+            {/* Mobile live status strip above preview */}
+            <div className="w-full max-w-[460px] flex md:hidden items-center justify-between text-xs text-[#8A8479] mb-2.5 px-1">
+              <span className="font-mono tabular-nums text-[#FF5A1F] font-semibold">
+                {countdown.liveHeadline}
+              </span>
+              <span className="font-mono tabular-nums">
+                {width} × {height} px
+              </span>
+            </div>
 
-          {/* Readily Available Output Size + Adjust Fit Disclosure */}
-          <TargetScreenControls
-            plan={plan}
-            onSelectPreset={handleSelectPreset}
-            onUpdateCustomSize={handleUpdateCustomSize}
-            onSelectOsPreview={handleSelectOsPreview}
-            onUpdateOffsets={handleUpdateOffsets}
-            onEnsureClockGuidesVisible={() => setShowClockGuides(true)}
-          />
+            <WallpaperStage
+              artworkCanvasRef={artworkCanvasRef}
+              plan={plan}
+              todayStr={todayStr}
+              width={width}
+              height={height}
+              showClockGuides={showClockGuides}
+              onToggleClockGuides={handleToggleClockGuides}
+              onOpenFullSize={() => setIsFullSizeOpen(true)}
+              nextSummaryText={nextSummaryText}
+            />
+
+            {/* Compact caption on smaller screens where the side metadata column is hidden */}
+            <div className="mt-2.5 flex xl:hidden flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-[#8A8479] text-center">
+              <span className="font-mono tabular-nums">
+                {width} × {height} PNG
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>{nextSummaryText}</span>
+            </div>
+          </section>
+
+          {/* Right / Secondary Column: Studio Controls & Editor */}
+          <div className="min-w-0 lg:col-start-2 lg:row-start-2 border-t lg:border-t-0 lg:border-l border-[#F4F0EA]/10 bg-[#080B10] p-4 sm:p-6 lg:pt-0 space-y-5">
+            {/* Plan & Station Editor */}
+            <PlanEditorPanel
+              plan={plan}
+              routeState={routeState}
+              todayStr={todayStr}
+              isEditorOpen={isEditorOpen}
+              onOpenEditor={() => setIsEditorOpen(true)}
+              onCloseEditor={() => {
+                setIsEditorOpen(false);
+                editButtonRef.current?.focus();
+              }}
+              onUpdateGoalAndDeadline={handleUpdateGoalAndDeadline}
+              onToggleMilestoneDone={handleToggleMilestoneDone}
+              onUpdateMilestone={handleUpdateMilestone}
+              onDeleteMilestone={handleDeleteMilestone}
+              onAddMilestone={handleAddMilestone}
+              onRequestGeminiSuggestions={async (g, d) => {
+                await handleRequestGeminiSuggestions(g, d);
+              }}
+              isSuggesting={isSuggesting}
+              geminiError={geminiError}
+              onDismissGeminiError={() => setGeminiError(null)}
+              pendingDraft={pendingDraft}
+              onUpdateDraftItem={handleUpdateDraftItem}
+              onRemoveDraftItem={handleRemoveDraftItem}
+              onAcceptDraft={handleAcceptDraft}
+              onDiscardDraft={handleDiscardDraft}
+              onResetToExample={handleResetToExample}
+            />
+
+            {/* Readily Available Output Size + Adjust Fit Disclosure */}
+            <TargetScreenControls
+              plan={plan}
+              onSelectPreset={handleSelectPreset}
+              onUpdateCustomSize={handleUpdateCustomSize}
+              onSelectOsPreview={handleSelectOsPreview}
+              onUpdateOffsets={handleUpdateOffsets}
+              onEnsureClockGuidesVisible={() => setShowClockGuides(true)}
+            />
+          </div>
+
         </div>
 
         {/* Browser CLI Terminal (Beside preview on desktop, bottom drawer on mobile) */}
@@ -658,6 +676,7 @@ export default function App() {
           data-testid="full-size-modal"
           className="fixed inset-0 z-50 bg-[#05070B]/95 backdrop-blur-sm flex flex-col"
         >
+          {exportError && <p role="alert" className="px-4 py-2 text-sm text-[#F4F0EA]">{exportError}</p>}
           {/* Inspector Header Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#F4F0EA]/12 bg-[#080B10]">
             <div className="flex items-center gap-3 min-w-0">

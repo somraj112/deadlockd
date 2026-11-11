@@ -170,6 +170,7 @@ export const PlanEditorPanel: React.FC<PlanEditorPanelProps> = ({
               </label>
               <input
                 id="goal-input"
+                autoFocus
                 type="text"
                 required
                 value={goalInput}
@@ -481,7 +482,7 @@ export const PlanEditorPanel: React.FC<PlanEditorPanelProps> = ({
                         ? `Undo ${st.label} completion`
                         : `Mark ${st.label} complete`
                     }
-                    className="min-h-[40px] min-w-[40px] flex items-center justify-center shrink-0 cursor-pointer focus:outline-none"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4F0EA]"
                   >
                     <span
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
@@ -492,15 +493,7 @@ export const PlanEditorPanel: React.FC<PlanEditorPanelProps> = ({
                             : 'border-2 border-[#C6C0B4]/50 bg-[#080B10] text-[#8A8479]/80 group-hover:border-[#F4F0EA] group-hover:text-[#F4F0EA]'
                       }`}
                     >
-                      <Check
-                        className={`w-4 h-4 ${
-                          isDone
-                            ? 'stroke-[2.8]'
-                            : isNext
-                              ? 'stroke-[2.5]'
-                              : 'stroke-[2.2] opacity-75 group-hover:opacity-100'
-                        }`}
-                      />
+                      {isDone && <Check aria-hidden="true" className="w-4 h-4 stroke-[2.8]" />}
                     </span>
                   </button>
 
